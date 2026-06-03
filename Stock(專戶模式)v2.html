@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📈 金融素養生存賽局 - 專業雙軌資產終端</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 650px; margin: 20px auto; padding: 15px; background-color: #f4f6f9; color: #333; }
+        .card { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .input-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, select { width: 95%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 1em; background-color: #fff; }
+        
+        #login-page { max-width: 400px; margin: 100px auto; text-align: center; }
+        .btn-login { width: 100%; background-color: #2980b9; color: white; padding: 12px; border: none; border-radius: 4px; font-size: 1.1em; font-weight: bold; cursor: pointer; }
+        
+        #main-page { display: none; }
+        
+        /* 🎨 超高對比度資產面板 */
+        .dashboard-box { background-color: #111a24; color: white; padding: 18px; border-radius: 8px; margin-bottom: 20px; border: 2px solid #2c3e50; }
+        .dash-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+        .dash-item { background: rgba(255,255,255,0.07); padding: 10px; border-radius: 4px; text-align: center; border: 1px solid #233342; }
+        .dash-val { font-size: 1.35em; font-weight: bold; margin-top: 5px; color: #ffffff; }
+        
+        /* 🎯 亮色文字修正（高可讀性） */
+        .bright-red { color: #ff4d4d !important; font-weight: 900; font-size: 1.4em !important; text-shadow: 1px 1px 2px #000; }
+        .bright-green { color: #2ecc71 !important; font-weight: 900; font-size: 1.4em !important; text-shadow: 1px 1px 2px #000; }
+        
+        .up-red { color: #d32f2f; font-weight: bold; }
+        .down-green { color: #388e3c; font-weight: bold; }
+        .no-change { color: #7f8c8d; font-weight: bold; }
+
+        .market-box { background-color: #fff8e1; padding: 15px; border-radius: 6px; border-left: 5px solid #ffb300; margin-bottom: 15px; }
+        .market-row { display: flex; justify-content: space-between; margin: 5px 0; font-size: 1.05em; }
+        .price-highlight { font-size: 1.5em; font-weight: bold; color: #333; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85em; }
+        th, td { border: 1px solid #ddd; padding: 7px; text-align: center; }
+        th { background-color: #f2f2f2; font-weight: bold; }
+
+        .btn-group { display: flex; gap: 10px; }
+        button.trade-btn { flex: 1; padding: 12px; font-size: 1.05em; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-buy { background-color: #d32f2f; }
+        .btn-sell { background-color: #388e3c; }
+        .btn-nav { background-color: #7f8c8d; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
+        
+        button:disabled { background-color: #cccccc !important; color: #666666 !important; cursor: not-allowed !important; opacity: 0.6; }
+        .lock-notice { color: #d32f2f; font-weight: bold; text-align: center; margin-top: 10px; font-size: 0.9em; display: none; }
+        
+        .table-container { max-height: 200px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; margin-top: 10px; }
+        
+        /* 雙軌資金獨有樣式 */
+        .channel-selector { display: flex; gap: 10px; margin-bottom: 12px; }
+        .channel-btn { flex: 1; padding: 8px; text-align: center; border: 2px solid #ccc; background: #fff; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .channel-btn.active { border-color: #2980b9; background-color: #ebf5fb; color: #2980b9; }
+    </style>
+</head>
+<body>
+
+    <div id="login-page" class="card">
+        <h2>📈 雙軌資金部位追蹤終端</h2>
+        <p style="color: #7f8c8d;">請輸入主控發給您的競賽帳密</p>
+        <div class="input-group" style="text-align: left;">
+            <label for="login-user">帳號 (Username)：</label>
+            <input type="text" id="login-user" placeholder="請輸入帳號">
+        </div>
+        <div class="input-group" style="text-align: left;">
+            <label for="login-pass">密碼 (Password)：</label>
+            <input type="password" id="login-pass" placeholder="請輸入密碼">
+        </div>
+        <button class="btn-login" onclick="login()">登入系統</button>
+    </div>
+
+    <div id="main-page">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3>👋 歡迎回來，<span id="user-display" style="color: #2980b9;">玩家</span></h3>
+            <button onclick="logout()" style="font-size: 0.8em; padding: 4px 8px; background:#e74c3c; color:white; border:none; border-radius:4px; cursor:pointer;">登出系統</button>
+        </div>
+
+        <div class="dashboard-box">
+            <div style="text-align: center; font-size: 0.95em; opacity: 0.9;">💵 玩家整合總資產 (雙軌現金 + 股票市值)</div>
+            <div id="dash-total-asset" style="text-align: center; font-size: 2.2em; font-weight: 900; margin: 5px 0; color:#f1c40f;">$ 0</div>
+            
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px; background:rgba(255,255,255,0.1); padding:8px; border-radius:4px; font-size:0.9em; margin-bottom:5px; border: 1px dashed rgba(255,255,255,0.3);">
+                <div style="text-align:center;">🛡️ 免稅專戶：<br><b id="dash-special-cash" style="color:#f39c12; font-size:1.1em;">$ 0</b> <span style="font-size:0.8em; opacity:0.8;">(手續費0%)</span></div>
+                <div style="text-align:center;">💰 一般現金：<br><b id="dash-general-cash" style="color:#2ecc71; font-size:1.1em;">$ 0</b> <span style="font-size:0.8em; opacity:0.8;">(手續費1%)</span></div>
+            </div>
+
+            <div class="dash-grid">
+                <div class="dash-item">
+                    <div style="font-size: 0.8em; opacity: 0.8;">目前持股總成本(含摩擦)</div>
+                    <div id="dash-stock-cost" class="dash-val">$ 0</div>
+                </div>
+                <div class="dash-item">
+                    <div style="font-size: 0.8em; opacity: 0.8;">持股總參考市值</div>
+                    <div id="dash-stock-value" class="dash-val">$ 0</div>
+                </div>
+                <div class="dash-item">
+                    <div style="font-size: 0.85em; font-weight:bold;">🔥 未實現投資總損益</div>
+                    <div id="dash-profit" class="dash-val" style="font-size:1.4em;">$ 0</div>
+                </div>
+                <div class="dash-item">
+                    <div style="font-size: 0.85em; font-weight:bold;">⚡ 目前投資總報酬率</div>
+                    <div id="dash-roi" class="dash-val" style="font-size:1.4em;">0.00%</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card" style="background-color: #edf7ed; border-left: 5px solid #2ecc71;">
+            <h4 style="margin-top:0; color:#27ae60;">🏦 一般自由現金 - 外部增資 / 提領調度面板</h4>
+            <p style="font-size:0.8em; color:#7f8c8d; margin-top:-10px;">※ 免稅專戶資金不可與此調度面板或外部帳戶互通。</p>
+            <div style="display:flex; gap:10px; align-items:center;">
+                <div style="flex:1;">
+                    <input type="number" id="cash-amount" placeholder="輸入自由現金調整金額" min="1">
+                </div>
+                <button onclick="handleCashAction('轉入')" style="padding:10px; border:none; background:#2ecc71; color:white; font-weight:bold; border-radius:4px; cursor:pointer;">➕ 現金轉入</button>
+                <button onclick="handleCashAction('轉出')" style="padding:10px; border:none; background:#e67e22; color:white; font-weight:bold; border-radius:4px; cursor:pointer;">➖ 現金轉出</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="input-group">
+                <label for="stock-select">選擇下單標的：</label>
+                <select id="stock-select" onchange="updateMarketDisplay()">
+                    <option value="tsmc">台積電(2330)</option>
+                    <option value="cht">中華電(2412)</option>
+                    <option value="fubon">富邦金(2881)</option>
+                    <option value="starlux">星宇(2646)</option>
+                    <option value="evergreen">長榮(2603)</option>
+                    <option value="htc">宏達電(2498)</option>
+                    <option value="psmc">力積電(6770)</option>
+                    <option value="ecpay">綠界(6763)</option>
+                    <option value="uni">統一(1216)</option>
+                    <option value="etf0050">0050(市值型)</option>
+                    <option value="etf0052">0052(科技型)</option>
+                    <option value="etf00981">00981A(全球半導體)</option>
+                    <option value="etf00990">00990A(永續高股息)</option>
+                    <option value="bond">美債(6779B)</option>
+                </select>
+            </div>
+            <div class="market-box">
+                <div class="market-row">
+                    <span>📅 正在瀏覽月份：</span>
+                    <span id="display-date" style="font-weight: bold; color: #2980b9;">-</span>
+                </div>
+                <div class="market-row" style="align-items: center;">
+                    <span>💰 收盤行情報價：</span>
+                    <span><span id="display-price" class="price-highlight">0</span> 元</span>
+                </div>
+                <div class="market-row" style="align-items: center; border-top: 1px dashed #ddd; padding-top: 8px; margin-top: 8px;">
+                    <span>📊 較上月漲跌比例：</span>
+                    <span id="display-change-rate" class="no-change">0.00%</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-top: 10px;">
+                    <button class="btn-nav" id="btn-prev" onclick="navigateHistory(-1)">◀ 看上個月</button>
+                    <button class="btn-nav" id="btn-next" onclick="navigateHistory(1)">看下個月 ▶</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card" style="border: 2px solid #34495e;">
+            <h4 style="margin-top:0; color:#2c3e50;">🛒 雙軌下單交易主控台</h4>
+            
+            <label>🔴 步驟 A：選擇本次「買進」的扣款資金來源：</label>
+            <div class="channel-selector">
+                <div id="chan-special" class="channel-btn active" onclick="setChannel('免稅專戶')">🛡️ 免稅專戶<br><span style="font-size:0.75em; font-weight:normal;">(買賣手續費 0%)</span></div>
+                <div id="chan-general" class="channel-btn" onclick="setChannel('一般現金')">💰 一般現金<br><span style="font-size:0.75em; font-weight:normal;">(買賣手續費 1%)</span></div>
+            </div>
+
+            <label>🟢 步驟 B：若執行「賣出」，款項結算方式 (任選一種)：</label>
+            <div style="background:#fff2e6; padding:8px; border-radius:4px; margin-bottom:12px; font-size:0.9em; border-left:4px solid #e67e22;">
+                <input type="radio" id="sell-to-special" name="sell-destination" value="免稅專戶" checked style="width:auto;" onclick="setTimeout(calculateTotal, 0)"> 
+                <label for="sell-to-special" style="display:inline; font-weight:normal; color:#d35400;"><b>選項 A</b>：回填至【免稅專戶】(享 0% 手續費)</label>
+                <br>
+                <input type="radio" id="sell-to-general" name="sell-destination" value="一般現金" style="width:auto;" onclick="setTimeout(calculateTotal, 0)"> 
+                <label for="sell-to-general" style="display:inline; font-weight:normal; color:#27ae60;"><b>選項 B</b>：變現至【一般現金】(扣 1% 手續費)</label>
+            </div>
+
+            <div class="input-group">
+                <label for="trade-shares">步驟 C：輸入交易股數：</label>
+                <input type="number" id="trade-shares" value="1000" min="1" oninput="calculateTotal()">
+            </div>
+            
+            <div id="dynamic-preview-box" style="font-size: 0.95em; background:#eef2f7; padding:15px; border-radius:6px; margin-bottom:15px; line-height:1.6em; border: 1px solid #d6dbdf;"></div>
+            
+            <div class="btn-group">
+                <button class="trade-btn btn-buy" id="action-btn-buy" onclick="handleTrade('買進')">執行下單買進</button>
+                <button class="trade-btn btn-sell" id="action-btn-sell" onclick="handleTrade('賣出')">執行下單賣出</button>
+            </div>
+            <div id="lock-warning" class="lock-notice">🔒 歷史月份僅供數據瀏覽，禁止時空穿越交易！</div>
+        </div>
+
+        <div class="card">
+            <h4>📁 我的目前股票持股明細</h4>
+            <table>
+                <thead>
+                    <tr><th>項目</th><th>持股比例</th><th>購買股數</th><th>平均成本</th><th>現價</th><th>損益</th><th>總報酬率</th></tr>
+                </thead>
+                <tbody id="inventory-tbody">
+                    <tr><td colspan="7" style="color:#aaa;">目前無持股庫存</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="card">
+            <h4>📜 我的股票歷史交易紀錄 (含資金管道標記)</h4>
+            <div class="table-container">
+                <table>
+                    <thead style="position: sticky; top: 0; background: #f2f2f2; z-index: 1;">
+                        <tr><th>時空月份</th><th>股票標的</th><th>動作</th><th>單價</th><th>交易股數</th><th>資金管道</th><th>原始總額</th></tr>
+                    </thead>
+                    <tbody id="history-tbody">
+                        <tr><td colspan="7" style="color:#aaa; padding:15px;">暫無股票交易紀錄</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card" style="border-top: 3px solid #2ecc71;">
+            <h4>🏦 一般自由現金 - 外部異動調度明細</h4>
+            <div class="table-container">
+                <table>
+                    <thead style="position: sticky; top: 0; background: #f2f2f2; z-index: 1;">
+                        <tr><th>時空月份</th><th>項目說明</th><th>異動動作</th><th>調度金額</th></tr>
+                    </thead>
+                    <tbody id="cash-history-tbody">
+                        <tr><td colspan="4" style="color:#aaa; padding:15px;">暫無現金調度紀錄</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // ===================================================
+    // 🔗 ★核心設定：請貼上你最新部署的 Google Apps Script 網頁應用程式網址★
+    // ===================================================
+    const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzHzLJkjneCSIKSufg0g73JBWf94EDitWrav4F0H_3PhuK_H0TogS1_G107pxP4NlEC0w/exec";
+
+    const stockDatabase = {
+        "tsmc": [600, 630, 610, 620, 615, 615, 640, 510, 530, 550, 570, 650],
+        "cht": [110, 111, 112, 113, 114, 114, 115, 110, 112, 113, 112, 115],
+        "fubon": [70, 72, 69, 71, 70, 70, 73, 58, 60, 62, 64, 72],
+        "starlux": [30, 35, 32, 33, 31, 31, 38, 22, 24, 25, 55, 40],
+        "evergreen": [140, 145, 138, 142, 140, 140, 150, 105, 110, 115, 120, 130],
+        "htc": [60, 65, 58, 60, 59, 59, 68, 35, 38, 40, 85, 45],
+        "psmc": [45, 46, 42, 43, 41, 41, 44, 26, 28, 29, 31, 32],
+        "ecpay": [400, 420, 390, 405, 395, 395, 430, 240, 260, 280, 300, 350],
+        "uni": [75, 76, 77, 78, 77, 77, 79, 72, 74, 75, 76, 78],
+        "etf0050": [140, 143, 139, 141, 140, 140, 145, 116, 120, 124, 128, 148],
+        "etf0052": [100, 104, 99, 101, 100, 100, 106, 75, 80, 84, 88, 108],
+        "etf00981": [21.5, 22.0, 18.5, 19.0, 18.2, 19.5, 21.0, 16.5, 17.8, 19.5, 22.0, 24.5],
+        "etf00990": [16.1, 16.2, 15.9, 15.8, 15.5, 15.0, 15.4, 14.2, 14.8, 15.2, 15.5, 15.0],
+        "bond": [30, 29, 30, 29, 30, 30, 28, 35, 33, 32, 31, 29]
+    };
+    const months = ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"];
+    
+    let currentUser = "";
+    let maxAllowedMonthIndex = 0; 
+    let viewingMonthIndex = 0;    
+    let globalMarketStatus = "開啟";
+    let selectedChannel = "免稅專戶"; // 預設買進管道
+
+    function setChannel(chan) {
+        selectedChannel = chan;
+        document.getElementById('chan-special').className = chan === '免稅專戶' ? 'channel-btn active' : 'channel-btn';
+        document.getElementById('chan-general').className = chan === '一般現金' ? 'channel-btn active' : 'channel-btn';
+        calculateTotal();
+    }
+
+    function login() {
+        const u = document.getElementById('login-user').value.trim();
+        const p = document.getElementById('login-pass').value.trim();
+        if(!u || !p) { alert('請輸入帳號密碼！'); return; }
+
+        fetch(`${GAS_WEB_APP_URL}?action=login&username=${u}&password=${p}`)
+            .then(res => res.json())
+            .then(res => {
+                if(res.status === "success") {
+                    currentUser = res.username;
+                    document.getElementById('login-page').style.display = 'none';
+                    document.getElementById('main-page').style.display = 'block';
+                    document.getElementById('user-display').innerText = currentUser;
+                    syncSystem();
+                    setInterval(syncSystem, 20000); 
+                } else {
+                    alert(res.message);
+                }
+            }).catch(e => alert('連線失敗，請檢查GAS網址！'));
+    }
+
+    function logout() {
+        if(!confirm("確定要登出系統嗎？")) return;
+        currentUser = "";
+        
+        // 💡 清除登入快取狀態
+        sessionStorage.removeItem('stock_game_user'); 
+        
+        // 切換畫面
+        document.getElementById('main-page').style.display = 'none';
+        document.getElementById('login-page').style.display = 'block';
+        
+        // 🟢 修正為您原本正確的 ID，這樣網頁就不會報錯卡死了！
+        if (document.getElementById('login-user')) document.getElementById('login-user').value = "";
+        if (document.getElementById('login-pass')) document.getElementById('login-pass').value = "";
+    }
+    // 🟢 老師主控同步引擎：老師在後端切換月份時，學生畫面即刻強制同步跳轉並連動
+    // 🟢 老師主控同步引擎（加速版）：只有在老師「真的換月」時，才強制刷新大腦，平常不干擾
+    // 🟢 老師主控同步引擎（配息不漏接版）：確保換月順暢，且 6 月/12 月配息通知絕對能精準觸發
+    function syncSystem() {
+        fetch(`${GAS_WEB_APP_URL}?action=getMarket`)
+            .then(res => res.json())
+            .then(res => {
+                const newMax = parseInt(res.currentMonth) - 1 || 0;
+                globalMarketStatus = res.marketStatus || "開啟";
+                
+                // 1. 💡 當老師在試算表「真正變更了月份」時，做大跳轉
+                if(newMax !== maxAllowedMonthIndex) {
+                    maxAllowedMonthIndex = newMax;
+                    viewingMonthIndex = maxAllowedMonthIndex; // 同步到最新月份
+                    
+                    // 先立刻執行本地端的報價與月份文字更新（0秒反應）
+                    updateMarketDisplay();
+                    
+                    // 再去後端抓最新的資產總額、刷新表格，並觸發配息彈窗
+                    refreshDashboard(viewingMonthIndex + 1);
+                } else {
+                    // 2. 💡 老師沒有換月時（例行每 20 秒檢查）
+                    updateMarketDisplay(); // 維持股價即時更新
+                    
+                    // 🎯 關鍵補丁：如果目前正處於 6月（Index為5）或 12月（Index為11），
+                    // 每 20 秒也讓它在背景重刷一次大腦！這樣即使後端高負載延遲，配息紀錄一跑完，彈窗就會立刻追補跳出來！
+                    if (viewingMonthIndex === 5 || viewingMonthIndex === 11) {
+                        refreshDashboard(viewingMonthIndex + 1);
+                    }
+                }
+            });
+    }
+
+    // 🟢 唯一的儀表板數據整合大腦：傳入 targetMonthNum (1~12)，依此抓取與連動畫面數據
+    // 🟢 儀表板數據整合大腦（強制排錯與防呆版）
+    // 🟢 儀表板數據整合大腦（彈窗必跳終極優化版）
+    // 🟢 儀表板數據整合大腦（終極無Bug完美版）
+    function refreshDashboard(targetMonthNum) {
+        if (!currentUser) return;
+        
+        const monthToSend = parseInt(targetMonthNum) || 1;
+
+        fetch(GAS_WEB_APP_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: "getDashboard", username: currentUser, currentMonth: monthToSend })
+        }).then(res => res.json())
+          .then(data => {
+              // 1. 更新上方資產數據面板
+              if (document.getElementById('dash-total-asset')) document.getElementById('dash-total-asset').innerText = '$ ' + Math.round(data.totalAsset || 0).toLocaleString();
+              if (document.getElementById('dash-special-cash')) document.getElementById('dash-special-cash').innerText = '$ ' + Math.round(data.specialCash || 0).toLocaleString();
+              if (document.getElementById('dash-general-cash')) document.getElementById('dash-general-cash').innerText = '$ ' + Math.round(data.generalCash || 0).toLocaleString();
+              if (document.getElementById('dash-stock-cost')) document.getElementById('dash-stock-cost').innerText = '$ ' + Math.round(data.totalStockCost || 0).toLocaleString();
+              if (document.getElementById('dash-stock-value')) document.getElementById('dash-stock-value').innerText = '$ ' + Math.round(data.totalStockValue || 0).toLocaleString();
+              
+              const pEl = document.getElementById('dash-profit');
+              if (pEl) {
+                  pEl.innerText = ((data.totalProfit || 0) >= 0 ? '+$ ' : '-$ ') + Math.abs(Math.round(data.totalProfit || 0)).toLocaleString();
+                  pEl.className = 'dash-val ' + ((data.totalProfit || 0) >= 0 ? 'bright-red' : 'bright-green');
+              }
+              
+              const rEl = document.getElementById('dash-roi');
+              if (rEl) {
+                  rEl.innerText = data.totalRoi || "0.00%";
+                  rEl.className = 'dash-val ' + ((data.totalProfit || 0) >= 0 ? 'bright-red' : 'bright-green');
+              }
+
+              // 2. 渲染持股明細庫存
+              const tbody = document.getElementById('inventory-tbody');
+              if (tbody) {
+                  if(!data.stockDetails || data.stockDetails.length === 0) {
+                      tbody.innerHTML = `<tr><td colspan="7" style="color:#aaa;">目前無持股庫存</td></tr>`;
+                  } else {
+                      let html = "";
+                      data.stockDetails.forEach(s => {
+                          html += `<tr>
+                            <td><b>${s.name}</b></td>
+                            <td style="color:#3498db; font-weight:bold;">${s.weight}</td>
+                            <td>${(s.qty || 0).toLocaleString()} 股</td>
+                            <td>$ ${s.avgPrice}</td>
+                            <td>$ ${s.currentPrice}</td>
+                            <td class="${s.profit >= 0 ? 'up-red' : 'down-green'}">${s.profit >= 0 ? '+' : ''}${Math.round(s.profit || 0).toLocaleString()}</td>
+                            <td class="${s.profit >= 0 ? 'up-red' : 'down-green'}">${s.roi}</td>
+                          </tr>`;
+                      });
+                      tbody.innerHTML = html;
+                  }
+              }
+
+              // 3. 歷史交易與現金調度完美分流
+              const historyTbody = document.getElementById('history-tbody');
+              const cashHistoryTbody = document.getElementById('cash-history-tbody');
+              
+              let stockHtml = "";
+              let cashHtml = "";
+
+              let dividendReport = "";
+              let totalDividendSum = 0;
+              const currentMonthText = months[monthToSend - 1]; // 例如 "6月"
+
+              if(data.historyRecords && data.historyRecords.length > 0) {
+                  data.historyRecords.forEach(h => {
+                      const recordType = String(h.type || "").trim();
+                      const recordName = String(h.stockName || "").trim();
+                      const recordMonth = String(h.month || "").trim();
+                      
+                      // 檢查是否屬於現金異動
+                      if (recordName === "現金點充" || recordType === "股票配息" || recordType === "配息" || recordName.indexOf("配息") !== -1) {
+                          
+                          let typeClass = "up-red"; 
+                          let showTitle = recordName;
+                          let showAction = recordType === "轉出" ? "轉出" : "轉入"; 
+
+                          // 💡 精準校正顯示字樣：只要是配息，動作欄位強制 100% 顯示為「配息」
+                          if (recordType === "股票配息" || recordType === "配息" || recordName.indexOf("配息") !== -1) {
+                              showAction = "配息";
+                          }
+
+                          // 💡 精準統計「當月」要跳出的配息總額，修復不跳彈窗的 Bug
+                          if (recordMonth === currentMonthText && (recordType === "股票配息" || recordType === "配息" || recordName.indexOf("配息") !== -1)) {
+                              if (dividendReport.indexOf(recordName) === -1) {
+                                  dividendReport += `💰 ${recordName} ＝ 實入 $${Math.round(h.total || 0).toLocaleString()} 元\n`;
+                              }
+                              totalDividendSum += parseFloat(h.total || 0); 
+                          }
+                          
+                          if (recordType === "轉出") {
+                              typeClass = "down-green";
+                              showAction = "轉出";
+                          }
+
+                          cashHtml += `<tr>
+                            <td>${h.month}</td>
+                            <td><b>${showTitle}</b></td>
+                            <td class="${typeClass}">${showAction}</td>
+                            <td style="font-weight:bold;">$ ${Math.round(h.total || 0).toLocaleString()} 元</td>
+                          </tr>`;
+                      } else {
+                          // 股票買賣交易分流
+                          let typeClass = recordType === "買進" ? "up-red" : "down-green";
+                          let chanClass = h.channel === "免稅專戶" ? "color:#e67e22; font-weight:bold;" : "color:#27ae60; font-weight:bold;";
+                          stockHtml += `<tr>
+                            <td>${h.month}</td>
+                            <td><b>${h.stockName}</b></td>
+                            <td class="${typeClass}">${h.type}</td>
+                            <td>$ ${h.price}</td>
+                            <td>${(h.qty || 0).toLocaleString()} 股</td>
+                            <td style="${chanClass}">${h.channel}</td>
+                            <td>$ ${Math.round(h.total || 0).toLocaleString()}</td>
+                          </tr>`;
+                      }
+                  });
+              }
+
+              if (historyTbody) historyTbody.innerHTML = stockHtml || `<tr><td colspan="7" style="color:#aaa; padding:15px;">暫無股票交易紀錄</td></tr>`;
+              if (cashHistoryTbody) cashHistoryTbody.innerHTML = cashHtml || `<tr><td colspan="4" style="color:#aaa; padding:15px;">暫無現金調度紀錄</td></tr>`;
+
+              // 💡 全新專屬解鎖鑰匙，逼迫網頁第一次一定要跳出配息彈窗
+              const storageKey = `has_seen_div_ultimate_${currentUser}_${currentMonthText}`;
+              if (totalDividendSum > 0 && !sessionStorage.getItem(storageKey)) {
+                  sessionStorage.setItem(storageKey, "true");
+                  setTimeout(function() {
+                      alert(`🎉【${currentMonthText} 除權息股息發放通知書】🎉\n\n恭喜！您在本月獲得了以下持股的配息回饋：\n\n${dividendReport}\n🔥 本月總計領到股息：$ ${Math.round(totalDividendSum).toLocaleString()} 元！\n\n※ 所有股息已自動匯入您的【💰 一般現金】帳戶！`);
+                  }, 300);
+              }
+
+              // 刷新當前行情欄位
+              if (typeof updateMarketDisplay === "function") updateMarketDisplay();
+          });
+    }
+    function getSelectedStockKey() { return document.getElementById('stock-select').value; }
+    function getSelectedStockName() { return document.getElementById('stock-select').options[document.getElementById('stock-select').selectedIndex].text; }
+    function getCurrentPrice() { return stockDatabase[getSelectedStockKey()][viewingMonthIndex]; }
+
+    function updateMarketDisplay() {
+        const price = getCurrentPrice();
+        const currentMonth = months[viewingMonthIndex];
+        document.getElementById('display-date').innerText = currentMonth;
+        document.getElementById('display-price').innerText = price.toLocaleString();
+        
+        const rateEl = document.getElementById('display-change-rate');
+        if (viewingMonthIndex === 0) {
+            rateEl.innerText = "第一個月 (基期)";
+            rateEl.className = "no-change";
+        } else {
+            const prevPrice = stockDatabase[getSelectedStockKey()][viewingMonthIndex - 1];
+            const changePercent = (((price - prevPrice) / prevPrice) * 100).toFixed(2);
+            if (price > prevPrice) {
+                rateEl.innerText = `▲ +${changePercent}% (較上月上漲)`;
+                rateEl.className = "up-red";
+            } else if (price < prevPrice) {
+                rateEl.innerText = `▼ ${changePercent}% (較上月下跌)`;
+                rateEl.className = "down-green";
+            } else {
+                rateEl.innerText = "─ 0.00% (持平)";
+                rateEl.className = "no-change";
+            }
+        }
+        
+        document.getElementById('btn-prev').disabled = (viewingMonthIndex === 0);
+        document.getElementById('btn-next').disabled = (viewingMonthIndex >= maxAllowedMonthIndex);
+        
+        const btnBuy = document.getElementById('action-btn-buy');
+        const btnSell = document.getElementById('action-btn-sell');
+        const lockWarning = document.getElementById('lock-warning');
+        
+        if (globalMarketStatus === "關閉") {
+            btnBuy.disabled = true;
+            btnSell.disabled = true;
+            lockWarning.innerText = "🚫 老師已暫停市場交易，請專心聽講！";
+            lockWarning.style.display = "block";
+        } else if (viewingMonthIndex < maxAllowedMonthIndex) {
+            btnBuy.disabled = true;
+            btnSell.disabled = true;
+            lockWarning.innerText = "🔒 歷史月份僅供數據瀏覽，禁止時空穿越交易！";
+            lockWarning.style.display = "block";
+        } else {
+            btnBuy.disabled = false;
+            btnSell.disabled = false;
+            lockWarning.style.display = "none";
+        }
+        
+        calculateTotal();
+    }
+
+    // 學生切換歷史瀏覽月份：點擊當下即時呼叫主腦刷新畫面
+    // 🟢 歷史瀏覽切換（0秒體感極速版）：先切換報價與月份，再異步補登資料
+    function navigateHistory(dir) {
+        // 先做安全檢查
+        if ((dir === -1 && viewingMonthIndex === 0) || (dir === 1 && viewingMonthIndex >= maxAllowedMonthIndex)) return;
+        
+        // 1. ⚡ 0.01秒立刻在本地端把月份變數換掉
+        viewingMonthIndex += dir;
+        
+        // 2. ⚡ 立刻呼叫本地端陣列，把台積電、中華電等「收盤價」、「漲跌幅」與「月份字樣」秒速換掉
+        updateMarketDisplay();
+        
+        // 3. 🔄 讓網頁在背後（偷偷地）去後端抓該月份的資產明細與交易紀錄，抓到後自動渲染
+        refreshDashboard(viewingMonthIndex + 1);
+    }
+
+    function calculateTotal() {
+        const price = getCurrentPrice();
+        const qty = parseInt(document.getElementById('trade-shares').value) || 0;
+        const base = price * qty;
+        
+        const buyChannel = selectedChannel; 
+        const buyFeeRate = buyChannel === "免稅專戶" ? 0 : 0.01;
+        const buyFee = Math.round(base * buyFeeRate);
+        const buyTotal = base + buyFee;
+
+        const sellRadio = document.querySelector('input[name="sell-destination"]:checked');
+        const sellChannel = sellRadio ? sellRadio.value : "免稅專戶";
+        const sellFeeRate = sellChannel === "免稅專戶" ? 0 : 0.01;
+        const sellFee = Math.round(base * sellFeeRate);
+        const sellTotal = base - sellFee; 
+        
+        const targetBox = document.getElementById('dynamic-preview-box');
+        if (!targetBox) return; 
+        
+        targetBox.innerHTML = `
+            <div style="display:flex; justify-content:space-between; font-weight:bold; margin-bottom:10px; color:#34495e; border-bottom:1px solid #bdc3c7; padding-bottom:5px;">
+                <span>📈 原始股票總面額：</span>
+                <span>$ ${base.toLocaleString()} 元</span>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div style="background:rgba(211,47,47,0.05); padding:10px; border-radius:4px; border-left:4px solid #d32f2f;">
+                    <b style="color:#d32f2f;">🔴 若執行【買進】</b><br>
+                    <span style="font-size:0.85em; color:#555;">扣款管道：${buyChannel}</span><br>
+                    <span style="font-size:0.85em; color:#555;">預估手續費 (${buyFeeRate * 100}%)：$ ${buyFee.toLocaleString()}</span>
+                    <div style="font-weight:bold; color:#d32f2f; margin-top:5px; border-top:1px dashed #f5b7b1; padding-top:5px;">
+                        👉 帳戶將扣除：<br>$ ${buyTotal.toLocaleString()}
+                    </div>
+                </div>
+                <div style="background:rgba(56,142,60,0.05); padding:10px; border-radius:4px; border-left:4px solid #388e3c;">
+                    <b style="color:#388e3c;">🟢 若執行【賣出】</b><br>
+                    <span style="font-size:0.85em; color:#555;">結算管道：${sellChannel}</span><br>
+                    <span style="font-size:0.85em; color:#555;">預估手續費 (${sellFeeRate * 100}%)：$ ${sellFee.toLocaleString()}</span>
+                    <div style="font-weight:bold; color:#388e3c; margin-top:5px; border-top:1px dashed #a9dfbf; padding-top:5px;">
+                        👉 帳戶將實拿：<br>$ ${sellTotal.toLocaleString()}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function handleCashAction(type) {
+        const amt = parseInt(document.getElementById('cash-amount').value);
+        if (isNaN(amt) || amt <= 0) { alert("請輸入有效的調度金額！"); return; }
+        
+        if(!confirm(`確定要將一般現金 $ ${amt.toLocaleString()} 元「${type}」目前帳戶嗎？`)) return;
+        
+        fetch(GAS_WEB_APP_URL, {
+            method: 'POST',
+            body: JSON.stringify({
+                action: "cashInOut",
+                username: currentUser,
+                month: months[maxAllowedMonthIndex],
+                currentMonth: maxAllowedMonthIndex + 1,
+                type: type,
+                amount: amt
+            })
+        }).then(res => res.json()).then(res => {
+            if(res.status === "success") {
+                alert("🏦 一般現金調度成功！");
+                document.getElementById('cash-amount').value = "";
+                refreshDashboard(viewingMonthIndex + 1);
+            } else {
+                alert(res.message);
+                refreshDashboard(viewingMonthIndex + 1);
+            }
+        });
+    }
+
+    function handleTrade(type) {
+        if (globalMarketStatus === "關閉" || viewingMonthIndex < maxAllowedMonthIndex) { alert("🔒 目前禁止交易！"); return; }
+
+        const qty = parseInt(document.getElementById('trade-shares').value);
+        const price = getCurrentPrice();
+        const stockName = getSelectedStockName();
+        const currentMonth = months[viewingMonthIndex];
+
+        if (isNaN(qty) || qty <= 0) { alert('請輸入有效股數！'); return; }
+        
+        let targetChannel = selectedChannel;
+        if (type === "賣出") {
+            targetChannel = document.querySelector('input[name="sell-destination"]:checked').value;
+        }
+        
+        const feeRateText = targetChannel === "免稅專戶" ? "0%" : "1%";
+        
+        const cf = confirm(`⚠️ 【正式下單確認】\n\n確認月份：${currentMonth}\n標的：${stockName}\n動作：${type}\n股數：${qty.toLocaleString()} 股\n單價：${price} 元\n\n🎯 資金管道：【${targetChannel}】(手續費 ${feeRateText})`);
+        if(!cf) return;
+
+        fetch(GAS_WEB_APP_URL, {
+            method: 'POST',
+            body: JSON.stringify({
+                action: "trade",
+                username: currentUser,
+                month: currentMonth,
+                currentMonth: viewingMonthIndex + 1,
+                stockName: stockName,
+                tradeType: type,
+                qty: qty,
+                channel: targetChannel
+            })
+        }).then(res => res.json())
+          .then(res => {
+              if(res.status === "success") {
+                  alert("🎉 交易成功！後端已成功檢核反當沖機制與資金扣存。");
+                  refreshDashboard(viewingMonthIndex + 1);
+              } else {
+                  alert(res.message); 
+                  refreshDashboard(viewingMonthIndex + 1);
+              }
+          });
+    }
+</script>
+</body>
+</html>
