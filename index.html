@@ -281,6 +281,7 @@
                     document.getElementById('login-page').style.display = 'none';
                     document.getElementById('main-page').style.display = 'block';
                     document.getElementById('user-display').innerText = currentUser;
+                    refreshDashboard();
                     syncSystem();
                     setInterval(syncSystem, 20000); 
                 } else {
