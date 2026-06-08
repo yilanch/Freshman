@@ -77,9 +77,14 @@
             <button onclick="logout()" style="font-size: 0.8em; padding: 4px 8px; background:#e74c3c; color:white; border:none; border-radius:4px; cursor:pointer;">登出系統</button>
         </div>
 
-        <div class="dashboard-box">
+      
+            <div class="dashboard-box">
             <div style="text-align: center; font-size: 0.95em; opacity: 0.9;">💵 玩家整合總資產 (雙軌現金 + 股票市值)</div>
             <div id="dash-total-asset" style="text-align: center; font-size: 2.2em; font-weight: 900; margin: 5px 0; color:#f1c40f;">$ 0</div>
+            
+            <div style="text-align: center; margin-bottom: 12px; margin-top: -3px;">
+                <button onclick="refreshDashboard(maxAllowedMonthIndex + 1)" style="background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.3); border-radius: 4px; padding: 4px 12px; font-size: 0.8em; cursor: pointer; font-weight: bold; transition: 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.15)'">🔄 立即同步電子銀行</button>
+            </div>
             
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px; background:rgba(255,255,255,0.1); padding:8px; border-radius:4px; font-size:0.9em; margin-bottom:5px; border: 1px dashed rgba(255,255,255,0.3);">
                 <div style="text-align:center;">🛡️ 免稅專戶：<br><b id="dash-special-cash" style="color:#f39c12; font-size:1.1em;">$ 0</b> <span style="font-size:0.8em; opacity:0.8;">(手續費0%)</span></div>
@@ -107,14 +112,13 @@
         </div>
 
         <div class="card" style="background-color: #edf7ed; border-left: 5px solid #2ecc71;">
-            <h4 style="margin-top:0; color:#27ae60;">🏦 一般自由現金 - 外部增資 / 提領調度面板</h4>
-            <p style="font-size:0.8em; color:#7f8c8d; margin-top:-10px;">※ 免稅專戶資金不可與此調度面板或外部帳戶互通。</p>
+            <h4 style="margin-top:0; color:#27ae60;">🏦 股市資金提領控制台</h4>
+            <p style="font-size: 0.85em; color: #555; margin-top: -8px;">※ 免稅專戶資金不可與此調度面板或外部帳戶互通。</p>
             <div style="display:flex; gap:10px; align-items:center;">
                 <div style="flex:1;">
-                    <input type="number" id="cash-amount" placeholder="輸入自由現金調整金額" min="1">
+                    <input type="number" id="cash-amount" placeholder="輸入欲提領金額" min="1">
                 </div>
-                <button onclick="handleCashAction('轉入')" style="padding:10px; border:none; background:#2ecc71; color:white; font-weight:bold; border-radius:4px; cursor:pointer;">➕ 現金轉入</button>
-                <button onclick="handleCashAction('轉出')" style="padding:10px; border:none; background:#e67e22; color:white; font-weight:bold; border-radius:4px; cursor:pointer;">➖ 現金轉出</button>
+                <button onclick="handleCashAction('轉出')" style="padding:10px 15px; border:none; background:#e67e22; color:white; font-weight:bold; border-radius:4px; cursor:pointer;">📤 確認提領至電子銀行</button>
             </div>
         </div>
 
@@ -281,8 +285,8 @@
                     document.getElementById('login-page').style.display = 'none';
                     document.getElementById('main-page').style.display = 'block';
                     document.getElementById('user-display').innerText = currentUser;
-                    refreshDashboard();
-                    syncSystem();
+                    refreshDashboard();    
+		    syncSystem();
                     setInterval(syncSystem, 20000); 
                 } else {
                     alert(res.message);
@@ -293,49 +297,42 @@
     function logout() {
         if(!confirm("確定要登出系統嗎？")) return;
         currentUser = "";
-        
-        // 💡 清除登入快取狀態
-        sessionStorage.removeItem('stock_game_user'); 
-        
-        // 切換畫面
         document.getElementById('main-page').style.display = 'none';
         document.getElementById('login-page').style.display = 'block';
-        
-        // 🟢 修正為您原本正確的 ID，這樣網頁就不會報錯卡死了！
-        if (document.getElementById('login-user')) document.getElementById('login-user').value = "";
-        if (document.getElementById('login-pass')) document.getElementById('login-pass').value = "";
+        document.getElementById('login-user').value = "";
+        document.getElementById('login-pass').value = "";
     }
+
     // 🟢 老師主控同步引擎：老師在後端切換月份時，學生畫面即刻強制同步跳轉並連動
     // 🟢 老師主控同步引擎（加速版）：只有在老師「真的換月」時，才強制刷新大腦，平常不干擾
     // 🟢 老師主控同步引擎（配息不漏接版）：確保換月順暢，且 6 月/12 月配息通知絕對能精準觸發
+    // 🟢 老師主控同步引擎（配息不漏接版）：確保換月順暢，且 6 月/12 月配息通知絕對能精準觸發
     function syncSystem() {
+        if(!currentUser) return;
+        
+        // 1. 同步市場狀態（月份、開關）
         fetch(`${GAS_WEB_APP_URL}?action=getMarket`)
             .then(res => res.json())
-            .then(res => {
-                const newMax = parseInt(res.currentMonth) - 1 || 0;
-                globalMarketStatus = res.marketStatus || "開啟";
+            .then(data => {
+                // 修正：原本網頁畫面沒有這個 ID，補上或保留安全寫法
+                const monthEl = document.getElementById('dash-month');
+                if (monthEl) monthEl.innerText = data.currentMonth;
                 
-                // 1. 💡 當老師在試算表「真正變更了月份」時，做大跳轉
-                if(newMax !== maxAllowedMonthIndex) {
-                    maxAllowedMonthIndex = newMax;
-                    viewingMonthIndex = maxAllowedMonthIndex; // 同步到最新月份
-                    
-                    // 先立刻執行本地端的報價與月份文字更新（0秒反應）
+                const statusEl = document.getElementById('dash-status');
+                if (statusEl) statusEl.innerText = data.marketStatus;
+                
+                const mIdx = months.indexOf(data.currentMonth);
+                if(mIdx !== -1) {
+                    maxAllowedMonthIndex = mIdx;
                     updateMarketDisplay();
-                    
-                    // 再去後端抓最新的資產總額、刷新表格，並觸發配息彈窗
-                    refreshDashboard(viewingMonthIndex + 1);
-                } else {
-                    // 2. 💡 老師沒有換月時（例行每 20 秒檢查）
-                    updateMarketDisplay(); // 維持股價即時更新
-                    
-                    // 🎯 關鍵補丁：如果目前正處於 6月（Index為5）或 12月（Index為11），
-                    // 每 20 秒也讓它在背景重刷一次大腦！這樣即使後端高負載延遲，配息紀錄一跑完，彈窗就會立刻追補跳出來！
-                    if (viewingMonthIndex === 5 || viewingMonthIndex === 11) {
-                        refreshDashboard(viewingMonthIndex + 1);
-                    }
                 }
-            });
+                
+                // 🆕【核心修正】將當前的即時月份數字（1 ~ 12）傳給 refreshDashboard
+                // 這樣背景自動同步時，後端才能正確用當前月份去統計 Trades 帳本！
+                const currentMonthNum = maxAllowedMonthIndex + 1;
+                refreshDashboard(currentMonthNum);
+                
+            }).catch(e => console.log("自動同步暫時中斷，等待下次嘗試..."));
     }
 
     // 🟢 唯一的儀表板數據整合大腦：傳入 targetMonthNum (1~12)，依此抓取與連動畫面數據
@@ -592,29 +589,35 @@
 
     function handleCashAction(type) {
         const amt = parseInt(document.getElementById('cash-amount').value);
-        if (isNaN(amt) || amt <= 0) { alert("請輸入有效的調度金額！"); return; }
+        if (isNaN(amt) || amt <= 0) { alert("請輸入有效的提領金額！"); return; }
         
-        if(!confirm(`確定要將一般現金 $ ${amt.toLocaleString()} 元「${type}」目前帳戶嗎？`)) return;
+        if(!confirm(`⚠️ 【跨境轉帳確認】\n\n您確定要將股市一般現金 $ ${amt.toLocaleString()} 元\n提領並轉帳至您的「電子銀行帳戶」嗎？`)) return;
         
+        // 確保精確抓取當前最高月份數字
+        var currentMonthNum = maxAllowedMonthIndex + 1;
+
         fetch(GAS_WEB_APP_URL, {
             method: 'POST',
             body: JSON.stringify({
                 action: "cashInOut",
                 username: currentUser,
-                month: months[maxAllowedMonthIndex],
-                currentMonth: maxAllowedMonthIndex + 1,
+                month: currentMonthNum + "月", // 保持股市 trades 寫入 "1月" 的格式
+                currentMonth: currentMonthNum,
                 type: type,
                 amount: amt
             })
         }).then(res => res.json()).then(res => {
             if(res.status === "success") {
-                alert("🏦 一般現金調度成功！");
+                alert("🎉 轉帳成功！資金已安全匯回您的電子銀行明細表。");
                 document.getElementById('cash-amount').value = "";
-                refreshDashboard(viewingMonthIndex + 1);
+                refreshDashboard();
             } else {
+                // 🛑 餘額不足或後端報錯時跳出警示
                 alert(res.message);
-                refreshDashboard(viewingMonthIndex + 1);
+                refreshDashboard();
             }
+        }).catch(err => {
+            alert("❌ 轉帳連線失敗！請確認您的 GAS 程式碼內是否有正確填入「銀行試算表ID」並成功部署為新版本。");
         });
     }
 
